@@ -27,6 +27,10 @@ class Go:
         if self.board[row][col] != '.':
             raise ValueError("Cannot place a stone on an existing stone")
         self.board[row][col] = self.black_piece if self.turn == "black" else self.white_piece
+
+    def get_val_at_pos(self, pos):
+        row, col = self.coordinates_to_pos(pos)
+        return self.board[row][col]
         
         
     def has_liberties(self, pos):
@@ -79,12 +83,12 @@ class Go:
         col: pos[1]
         '''
         for pos in positions:
-            print(pos)
             self.set_position(pos)
             for neighbor in self.get_neighbors(pos):
-                if not self.has_liberties(neighbor):
-                    stones_to_remove = self.black_piece if self.turn == "white" else self.white_piece
-                    self.remove_stones(neighbor, stones_to_remove)
+                if get_val_at_pos(pos) != get_val_at_pos(neighbor):
+                    if not self.has_liberties(neighbor):
+                        stones_to_remove = self.black_piece if self.turn == "white" else self.white_piece
+                        self.remove_stones(neighbor, stones_to_remove)
             self.end_turn()
             
             
@@ -108,4 +112,11 @@ class Go:
 #             return "white"
         else:
             raise ValueError("Value of turn should not be modified outside of this method")
+
+    def print_board(self):
+        for row in self.board:
+            print(row)
             
+    def reset_board(self):
+        self.turn = black
+        self.board = [["." for i in range(self.height)] for j in range(self.width)]
