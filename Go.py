@@ -45,22 +45,25 @@ class Go:
 
     # invoke with neighbors = self.get_stone_group(pos, stone_type, [])
     def get_stone_group_helper(self, pos, stone_type, visited, stone_group):
+        row, col = self.get_coordinates(pos)
+        if self.board[row][col] != stone_type:
+            return stone_group
         visited.append(pos)
         stone_group.append(pos)
         neighbors = self.get_neighbors(pos)
         # print("\n__" + pos + "__\n")
         for stone in neighbors:
-            print(stone)
+            # print(stone)
             if stone in visited:
-                print("already visited " + stone)
+                # print("already visited " + stone)
                 continue
             # print("hello")
             s_row, s_col = self.get_coordinates(stone)
             if self.board[s_row][s_col] == stone_type:
-                print("\n__" + stone + "__ is same type of stone\n")
+                # print("\n__" + stone + "__ is same type of stone\n")
                 # this modifies stone_group
                 self.get_stone_group_helper(stone, stone_type, visited, stone_group)
-                print("\nexiting recurse\n")
+                # print("\nexiting recurse\n")
         return stone_group
 
 

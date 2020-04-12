@@ -11,10 +11,10 @@ for move in moves:
     game.print_board()
     print("")
     i += 1
-    if i == 8:
+    if i >= 8:
         stone_group = game.get_stone_group("6E", 'o')
         print(stone_group)
-        exit()
+        # exit()
 
 
 
