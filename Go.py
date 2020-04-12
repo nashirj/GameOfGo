@@ -8,6 +8,7 @@ class Go:
         self.turn = "black"
         self.white_piece = 'o'
         self.black_piece = 'x'
+        self.stones_to_remove = self.white_piece
         
         
     def get_coordinates(self, pos):
@@ -43,7 +44,6 @@ class Go:
         return stone_group
 
 
-    # invoke with neighbors = self.get_stone_group(pos, stone_type, [])
     def get_stone_group_helper(self, pos, stone_type, visited, stone_group):
         row, col = self.get_coordinates(pos)
         if self.board[row][col] != stone_type:
@@ -51,19 +51,12 @@ class Go:
         visited.append(pos)
         stone_group.append(pos)
         neighbors = self.get_neighbors(pos)
-        # print("\n__" + pos + "__\n")
         for stone in neighbors:
-            # print(stone)
             if stone in visited:
-                # print("already visited " + stone)
                 continue
-            # print("hello")
             s_row, s_col = self.get_coordinates(stone)
             if self.board[s_row][s_col] == stone_type:
-                # print("\n__" + stone + "__ is same type of stone\n")
-                # this modifies stone_group
                 self.get_stone_group_helper(stone, stone_type, visited, stone_group)
-                # print("\nexiting recurse\n")
         return stone_group
 
 
@@ -86,42 +79,41 @@ class Go:
         return False
 
 
-    def get_neighbors(self, pos):
+    def get_neighbors(self, pos, stone_type=None):
         row, col = self.get_coordinates(pos)
         neighbors = []
         if row > 0:
-            neighbors.append(self.coordinates_to_pos(row-1,col))
+            # short circuit if no stone type passed, else check for stone_type before adding
+            if not stone_type or self.board[row-1][col] == stone_type:
+                neighbors.append(self.coordinates_to_pos(row-1,col))
         if row < self.height-1:
-            neighbors.append(self.coordinates_to_pos(row+1,col))
+            if not stone_type or self.board[row+1][col] == stone_type:
+                neighbors.append(self.coordinates_to_pos(row+1,col))
         if col > 0:
-            neighbors.append(self.coordinates_to_pos(row,col-1))
+            if not stone_type or self.board[row][col-1] == stone_type:
+                neighbors.append(self.coordinates_to_pos(row,col-1))
         if col < self.height-1:
-            neighbors.append(self.coordinates_to_pos(row,col+1))
+            if not stone_type or self.board[row][col+1] == stone_type:
+                neighbors.append(self.coordinates_to_pos(row,col+1))
         return neighbors
 
 
-    def remove_stones(self, pos, stones_to_remove):
-        row, col = self.get_coordinates(pos)
-        self.board[row][col] = '.'
-        # remove neighbors if they are same stone type
-        neighbors = self.get_neighbors(pos)
-        while neighbors:
-            for neighbor in neighbors:
-                n_row, n_col = self.get_coordinates(neighbor)
-                if self.board[n_row][n_col] == stones_to_remove:
-                    self.remove_stones(neighbor, stones_to_remove)
-                    self.board[n_row][n_col] = '.'
-                neighbors.remove(neighbor)
+    def remove_stones(self, *stones_to_remove):
+        for stone in stones_to_remove:
+            if self.get_val_at_pos(stone) == self.stones_to_remove:
+                stone_group = self.get_stone_group(stone, self.stones_to_remove)
+                if all(not self.has_liberties(stone) for stone in stone_group):
+                    for remove in stone_group:
+                        row, col = self.get_coordinates(remove)
+                        self.board[row][col] = '.'
 
 
     def move(self, *positions):
         for pos in positions:
             self.set_position(pos)
-            stones_to_remove = self.black_piece if self.turn == "white" else self.white_piece
-            for neighbor in self.get_neighbors(pos):
-                if self.get_val_at_pos(neighbor) == stones_to_remove:
-                    if not self.has_liberties(neighbor):
-                        self.remove_stones(neighbor, stones_to_remove)
+            enemy_neighbors = self.get_neighbors(pos, self.stones_to_remove)
+            if enemy_neighbors:
+                self.remove_stones(*enemy_neighbors)
             self.end_turn()
 
 
@@ -136,11 +128,12 @@ class Go:
 
     def end_turn(self):
         if self.turn == "black":
-            # do black turn
             self.turn = "white"
+            self.stones_to_remove = self.black_piece
         elif self.turn == "white":
             # do white turn
             self.turn = "black"
+            self.stones_to_remove = self.white_piece
         else:
             raise ValueError("Value of turn should not be modified outside of this method")
 
