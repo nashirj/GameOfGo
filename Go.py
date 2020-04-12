@@ -138,6 +138,16 @@ class Go:
             raise ValueError("Value of turn should not be modified outside of this method")
 
 
+    # public means of ending/passing turn
+    def pass_turn(self):
+        self.end_turn()
+
+
+    # TODO: implement this, need to keep track of game state
+    def rollback(self, num_turns):
+        pass
+
+
     def print_board(self):
         print(" ", end="")
         for i in range(self.width):
