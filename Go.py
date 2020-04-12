@@ -1,9 +1,10 @@
 class Go:
-    def __init__(self, size):
-        if size > 25:
+    def __init__(self, height, width=None):
+        if height > 25:
             raise ValueError("Board cannot be larger than 25 by 25")
-        self.height = size
-        self.width = size
+        self.height = height
+        self.width = width if width else height
+        self.size = {"height":height, "width":width}
         self.board = [["." for i in range(self.height)] for j in range(self.width)]
         self.turn = "black"
         self.white_piece = 'o'
@@ -111,6 +112,22 @@ class Go:
                         self.board[row][col] = '.'
 
 
+    # TODO: implement this, need to keep track of game state
+    def rollback(self, num_turns):
+        # the entry at the top of game_states is the state at the end of the turn
+        # print("before rollback")
+        # self.print_board()
+        while len(self.game_states) > 1 and num_turns > 0:
+            self.game_states.pop()
+            self.board = self.game_states[-1]
+            # print("after pop")
+            # self.print_board()
+            self.turn = "white" if self.turn == "black" else "black"
+            num_turns -= 1
+        if num_turns > 0:
+            raise ValueError("Invalid value for num_turns")
+
+
     def move(self, *positions):
         for pos in positions:
             self.set_position(pos)
@@ -145,19 +162,9 @@ class Go:
             raise ValueError("Value of turn should not be modified outside of this method")
         # append a copy of the board
         self.game_states.append([row[:] for row in self.board])
-
-
-
-    # TODO: implement this, need to keep track of game state
-    def rollback(self, num_turns):
-        # the entry at the top of game_states is the state at the end of the turn
-        self.game_states.pop()
-        while self.game_states and num_turns > 0:
-            self.board = self.game_states.pop()
-            self.turn = "white" if self.turn == "black" else "black"
-            num_turns -= 1
-        if num_turns > 0:
-            raise ValueError("Invalid value for num_turns")
+        if len(self.game_states) > 2 and self.board == self.game_states[-3]:
+            self.rollback(1)
+            raise ValueError("Illegal ko move")
 
 
     def print_board(self):
@@ -174,6 +181,41 @@ class Go:
             print("")
 
 
-    def reset_board(self):
-        self.turn = black
+    def reset(self):
+        self.turn = "black"
         self.board = [["." for i in range(self.height)] for j in range(self.width)]
+
+
+    def handicap_stones(self, num):
+        if self.width != self.height or (self.height != 9 and self.height != 13 and self.height != 19):
+            raise ValueError("Can't use handicap stones on non-square board")
+        if num < 1:
+            raise ValueError("Must specify a positive integer number of handicap stones")
+        if self.width == 9 and num > 5:
+            raise ValueError("Must specify a positive integer no greater than 5 for 9x9 board")
+        if self.width == 13 and num > 9:
+            raise ValueError("Must specify a positive integer no greater than 9 for 13x13 board")
+        if self.width == 19 and num > 9:
+            raise ValueError("Must specify a positive integer no greater than 9 for 19x19 board")
+        if len(self.game_states) > 1:
+            print("Can't place handicap stones after game starts")
+
+        self.hc_9x9 = {1:(2,6), 2:(6,2), 3:(6,6), 4:(2,2), 5:(4,4)}
+        self.hc_13x13 = {1:(3,9), 2:(9,3), 3:(9,9), 4:(3,3), 5:(6,6), 6:(3,6), 7:(9,6), 8:(3,6), 9:(9,6)}
+        self.hc_19x19 = {1:(3,15), 2:(15,15), 3:(9,9), 4:(3,3), 5:(9,9), 6:(9,3), 7:(9,15), 8:(3,9), 9:(15,9)}
+
+        if self.width == 9:
+            while num > 0:
+                row, col = self.hc_9x9[num]
+                self.board[row][col] = self.black_piece
+                num -= 1
+        elif self.width == 13:
+            while num > 0:
+                row, col = self.hc_13x13[num]
+                self.board[row][col] = self.black_piece
+                num -= 1
+        elif self.width == 19:
+            while num > 0:
+                row, col = self.hc_19x19[num]
+                self.board[row][col] = self.black_piece
+                num -= 1

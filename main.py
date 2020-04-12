@@ -17,19 +17,41 @@ def print_games(game):
 
 
 
-game = Go(9)
-moves = ["5D","5E","4E","6E","7D","4F","7E","3E","5F","4D",
-         "6F","6D","6C","7F","4E","5E"]
+# game = Go(9)
+# moves = ["5D","5E","4E","6E","7D","4F","7E","3E","5F","4D",
+#          "6F","6D","6C","7F","4E","5E"]
 
-i = 1         
+# i = 1
+# for move in moves:
+#     print("move {}\n".format(i))
+#     game.move(move)
+#     game.print_board()
+#     print("")
+#     i += 1
+
+# game.rollback(3)
+
+
+game = Go(5)
+moves = ["5C","5B","4D","4A","3C","3B",
+         "2D","2C","4B","4C","4B"]
+# test.expect_error("Illegal KO move. Should throw an error.", lambda: game.move(*moves))
+i = 1
 for move in moves:
-    # print("move {}\n".format(i))
-    game.move(move)
-    # game.print_board()
-    # print("")
+    print("move {}\n".format(i))
+    try:
+        game.move(move)
+    except:
+        print("raised ko error")
+    game.print_board()
+    print("")
     i += 1
 
-game.rollback(3)
+game.move("2B")
+game.print_board()
+# test.assert_equals(game.get_position("2B"), "x", "Black should be given another try to place their stone.")
+# test.assert_equals(game.get_position("4B"), ".", "Should rollback game before illegal move was made.")
+# close_it()
 
 
 
