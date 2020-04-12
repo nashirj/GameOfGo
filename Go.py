@@ -9,6 +9,9 @@ class Go:
         self.white_piece = 'o'
         self.black_piece = 'x'
         self.stones_to_remove = self.white_piece
+        self.curr_stone_type = self.black_piece
+        # for rollback
+        self.game_states = [[row[:] for row in self.board]]
         
         
     def get_coordinates(self, pos):
@@ -22,7 +25,7 @@ class Go:
         col_ch = chr(col+ord('A'))
         return "{}{}".format(row_ch, col_ch)
 
-        
+
     def set_position(self, pos):
         row, col = self.get_coordinates(pos)
         if row >= self.height or row < 0 or col >= self.width or col < 0:
@@ -112,9 +115,11 @@ class Go:
         for pos in positions:
             self.set_position(pos)
             enemy_neighbors = self.get_neighbors(pos, self.stones_to_remove)
+            # use this to stop suicide
+            pos_stone_group = self.get_stone_group(pos, self.curr_stone_type)
             if enemy_neighbors:
                 self.remove_stones(*enemy_neighbors)
-            self.end_turn()
+            self.pass_turn()
 
 
     def get_position(self, pos):
@@ -126,26 +131,33 @@ class Go:
         return self.board[row][col]
 
 
-    def end_turn(self):
+    def pass_turn(self):
         if self.turn == "black":
             self.turn = "white"
             self.stones_to_remove = self.black_piece
+            self.curr_stone_type = self.white_piece
         elif self.turn == "white":
             # do white turn
             self.turn = "black"
             self.stones_to_remove = self.white_piece
+            self.curr_stone_type = self.black_piece
         else:
             raise ValueError("Value of turn should not be modified outside of this method")
+        # append a copy of the board
+        self.game_states.append([row[:] for row in self.board])
 
-
-    # public means of ending/passing turn
-    def pass_turn(self):
-        self.end_turn()
 
 
     # TODO: implement this, need to keep track of game state
     def rollback(self, num_turns):
-        pass
+        # the entry at the top of game_states is the state at the end of the turn
+        self.game_states.pop()
+        while self.game_states and num_turns > 0:
+            self.board = self.game_states.pop()
+            self.turn = "white" if self.turn == "black" else "black"
+            num_turns -= 1
+        if num_turns > 0:
+            raise ValueError("Invalid value for num_turns")
 
 
     def print_board(self):
