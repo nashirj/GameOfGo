@@ -124,6 +124,8 @@ class Go:
                         self.board[row][col] = '.'
 
 
+    #TODO: need to make this method work properly: validate that self.turn is correct
+    # after calling rollback more than once
     def rollback(self, num_turns):
         # the entry at the top of game_states is the state at the end of the turn
         # print("before rollback")
