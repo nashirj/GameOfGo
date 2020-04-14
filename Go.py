@@ -14,23 +14,23 @@ class Go:
         # for rollback
         self.game_states = [[row[:] for row in self.board]]
         self.handicap_stones_set = False
-        
-        
+
+
     def get_coordinates(self, pos):
-        row = abs(int(pos[0:-1])-self.size["width"])
+        row = abs(int(pos[0:-1])-self.size["height"])
         col = ord(pos[-1])-ord('A')
         # go boards skip the letter 'I'
         if col >= 9:
             col -= 1
-        # print("pos: {}, ".format(pos), end='')
-        # print("row: {}, col: {}, height: {}, width: {}".format(row, col, self.size["height"], self.size["width"]))
-        if row >= self.size["height"] or row < 0 or col >= self.size["width"] or col < 0:
-            raise ValueError("Cannot place a stone with out of bounds coordinates")
+        if row >= self.size["height"] or row < 0:
+            raise ValueError("Cannot place a stone in row {} for board of height {}".format(row, self.size["height"]))
+        if col >= self.size["width"] or col < 0:
+            raise ValueError("Cannot place a stone in col {} for board of width {}".format(col, self.size["width"]))
         return row, col
 
-        
+
     def coordinates_to_pos(self, row, col):
-        row_str = str(abs(row-self.size["width"]))
+        row_str = str(abs(row-self.size["height"]))
         # go boards skip the letter 'I'
         if col >= 9:
             col += 1
@@ -39,7 +39,6 @@ class Go:
 
 
     def set_position(self, pos, reset=False):
-        # TODO: need to make sure that pos is valid, i.e. of the form {num \in size}{char \in range}
         row, col = self.get_coordinates(pos)
         if row >= self.size["height"] or col >= self.size["width"]:
             raise ValueError("Cannot place a stone with out of bounds coordinates")
@@ -66,7 +65,7 @@ class Go:
         if col > 0:
             if not stone_type or self.board[row][col-1] == stone_type:
                 neighbors.append(self.coordinates_to_pos(row,col-1))
-        if col < self.size["height"]-1:
+        if col < self.size["width"]-1:
             if not stone_type or self.board[row][col+1] == stone_type:
                 neighbors.append(self.coordinates_to_pos(row,col+1))
         return neighbors
@@ -95,7 +94,6 @@ class Go:
         return stone_group
 
 
-    # need to check if a given stone group has liberties. if not, remove it
     def has_liberties(self, pos):
         row, col = self.get_coordinates(pos)
         stone_type = self.board[row][col]
@@ -108,7 +106,7 @@ class Go:
         if col > 0:
             if self.board[row][col-1] == '.':
                 return True
-        if col < self.size["height"]-1:
+        if col < self.size["width"]-1:
             if self.board[row][col+1] == '.':
                 return True
         return False
@@ -124,18 +122,14 @@ class Go:
                         self.board[row][col] = '.'
 
 
-    #TODO: need to make this method work properly: validate that self.turn is correct
-    # after calling rollback more than once
-    def rollback(self, num_turns):
-        # the entry at the top of game_states is the state at the end of the turn
-        # print("before rollback")
-        # self.print_board()
+    def rollback(self, num_turns, illegal_ko=False):
         while len(self.game_states) > 1 and num_turns > 0:
             self.game_states.pop()
-            self.board = self.game_states[-1]
-            # print("after pop")
-            # self.print_board()
-            self.turn = "white" if self.turn == "black" else "black"
+            self.board = [row[:] for row in self.game_states[-1]]
+            # don't switch stone type or stones to remove if rollingback due to illegal ko
+            if not illegal_ko:
+                self.curr_stone_type, self.stones_to_remove = self.stones_to_remove, self.curr_stone_type
+                self.turn = "white" if self.turn == "black" else "black"
             num_turns -= 1
         if num_turns > 0:
             raise ValueError("Invalid value for num_turns")
@@ -143,12 +137,9 @@ class Go:
 
     def check_for_self_capture(self, pos):
         stone_group = self.get_stone_group(pos, self.curr_stone_type)
-        # print("stone group is {}".format(stone_group))
         for stone in stone_group:
-            # print("checking stone for liberties")
             if self.has_liberties(stone):
                 return
-            # print(stone + " has no liberties")
         self.set_position(pos, reset=True)
         raise ValueError("Self-capturing (suicide) is illegal")
 
@@ -164,26 +155,30 @@ class Go:
             self.pass_turn()
 
 
+
     def get_position(self, pos):
         row, col = self.get_coordinates(pos)
         return self.board[row][col]
 
 
+    def check_for_illegal_ko(self):
+        # impossible to have illegal ko before 5th move
+        if len(self.game_states) > 4 and self.board == self.game_states[-3]:
+            # if the turn was passed, it is not illegal KO, so check that last step != current step
+            if self.board != self.game_states[-2]:
+                self.rollback(1, illegal_ko=True)
+                raise ValueError("Illegal KO move")
+
+
     def pass_turn(self):
         # append a copy of the board
         self.game_states.append([row[:] for row in self.board])
-        if len(self.game_states) > 2 and self.board == self.game_states[-3]:
-            # if the turn was passed, it is not illegal KO, so check that last step != current step
-            if self.board != self.game_states[-2]:
-                self.rollback(1)
-                # self.turn = "white" if self.turn == "black" else "black"
-                raise ValueError("Illegal KO move")
+        self.check_for_illegal_ko()
         if self.turn == "black":
             self.turn = "white"
             self.stones_to_remove = self.black_piece
             self.curr_stone_type = self.white_piece
         elif self.turn == "white":
-            # do white turn
             self.turn = "black"
             self.stones_to_remove = self.white_piece
             self.curr_stone_type = self.black_piece
@@ -193,7 +188,7 @@ class Go:
 
     def print_board(self):
         height = self.size["height"]
-        offset = " " if height < 10 else "  "
+        offset = "  "
         print(offset, end="")
         for i in range(self.size["width"]+1):
             # go boards skip the letter "I"
@@ -213,7 +208,10 @@ class Go:
 
     def reset(self):
         self.turn = "black"
+        self.stones_to_remove = self.white_piece
+        self.curr_stone_type = self.black_piece
         self.board = [["." for i in range(self.size["width"])] for j in range(self.size["height"])]
+        self.game_states = [[row[:] for row in self.board]]
         self.handicap_stones_set = False
 
 
